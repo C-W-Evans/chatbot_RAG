@@ -1,6 +1,7 @@
 import os
 import re
 from rag import RAGChatbot
+from evaluation import EvaluationSystem
 
 def main():
     # Path to the vector database
@@ -18,6 +19,9 @@ def main():
         model_name="tinyllama",
         num_passages=4  # Retrieve 4 most relevant passages
     )
+    
+    # Initialize the evaluation system
+    evaluator = EvaluationSystem()
     
     print("\nRAG Chatbot initialized!")
     print("This chatbot can answer questions about LangChain documentation.")
@@ -41,10 +45,14 @@ def main():
         
         # Get response from the chatbot
         response = chatbot.query(user_question)
+        answer = response["answer"]
         
         # Print the answer
         print("\nAnswer:")
-        print(response["answer"])
+        print(answer)
+        
+        # Collect source IDs for logging
+        source_ids = [doc.metadata.get('id', 'unknown') for doc in response["source_documents"]]
         
         # Ask if user wants to see sources
         show_sources = input("\nDo you want to see the sources? (y/n): ").lower()
@@ -58,6 +66,31 @@ def main():
                 print(f"Source: {doc.metadata.get('source', 'Unknown')}")
                 print(f"ID: {doc.metadata.get('id', 'Unknown')}")
                 print()
+        
+        # Get user evaluation
+        print("\nHow would you rate this answer? (1-5, where 5 is excellent)")
+        rating = 0
+        while rating < 1 or rating > 5:
+            try:
+                rating = int(input("Rating (1-5): "))
+                if rating < 1 or rating > 5:
+                    print("Please enter a number between 1 and 5.")
+            except ValueError:
+                print("Please enter a valid number.")
+        
+        # Get optional feedback
+        feedback = input("Any additional feedback? (optional): ")
+        
+        # Log the evaluation
+        evaluator.log_evaluation(
+            question=user_question,
+            answer=answer,
+            rating=rating,
+            feedback=feedback,
+            source_ids=source_ids
+        )
+        
+        print("Thank you for your feedback!")
 
 if __name__ == "__main__":
     main()
